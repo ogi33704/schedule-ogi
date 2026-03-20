@@ -18,7 +18,7 @@ import {
 import { ja } from "date-fns/locale";
 
 // --- 定数 ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzmgmYRL7s8LZVtLiBLX9SLc5wvKTA1S0zSuBrrW3XVlb0X35DLaDmKK8I-BeY5WotpsQ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz6jdOlJ-Z9Q_teLQAjmk0OVxO03MR19lQQxpQwTQoDEmxT7SOGG_puxSJSqtzbaRF7GQ/exec";
 
 async function pushToGAS(data: any) {
   try {

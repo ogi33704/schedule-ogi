@@ -30,7 +30,7 @@ type DailyReport = { date: string; message: string; photoUrl: string | null; isP
 type Applicant = { id: string; name: string; date: string; timeRange: string; slotId: string; };
 type Campaign = { id: string; title: string; startDate: string; endDate: string; note: string; };
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzmgYRL7s8LZVtLiBLX9SLc5wvKTA1S0zSuBrrW3XVlb0X35DLaDmKK8I-BeY5WotpsQ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz6jdOlJ-Z9Q_teLQAjmk0OVxO03MR19lQQxpQwTQoDEmxT7SOGG_puxSJSqtzbaRF7GQ/exec";
 
 async function pushToGAS(data: any) {
   try {
