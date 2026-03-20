@@ -34,11 +34,14 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbzmgYRL7s8LZVtLiBLX9SLc
 
 async function pushToGAS(data: any) {
   try {
+    const params = new URLSearchParams();
+    params.append("payload", JSON.stringify(data));
+
     await fetch(GAS_URL, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(data)
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
     });
   } catch (e) {
     console.error("Cloud Error:", e);

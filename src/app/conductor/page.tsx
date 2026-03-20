@@ -25,11 +25,14 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbzmgmYRL7s8LZVtLiBLX9SL
 
 async function pushToGAS(data: any) {
   try {
+    const params = new URLSearchParams();
+    params.append("payload", JSON.stringify(data));
+
     await fetch(GAS_URL, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(data)
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
     });
   } catch (e) {
     console.error("Cloud Error:", e);
@@ -101,8 +104,8 @@ export default function ConductorPage() {
       // クラウドから初期取得
       fetchData();
 
-      // 定期更新（20秒ごと）
-      const timer = setInterval(fetchData, 20000);
+      // 定期更新（編集中の上書きを防ぐため60秒ごと）
+      const timer = setInterval(fetchData, 60000);
       return () => clearInterval(timer);
     } catch {}
   }, []);

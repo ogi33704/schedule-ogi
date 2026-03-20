@@ -22,11 +22,15 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbzmgmYRL7s8LZVtLiBLX9SL
 
 async function pushToGAS(data: any) {
   try {
+    // GASとの相性が最も良いform-urlencoded形式でデータを送信
+    const params = new URLSearchParams();
+    params.append("payload", JSON.stringify(data));
+
     await fetch(GAS_URL, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(data)
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
     });
   } catch (e) {
     console.error("Cloud Error:", e);
@@ -155,8 +159,8 @@ export default function AdminPage() {
     // 2. クラウドから初期取得
     fetchData();
 
-    // 3. 定期更新（同期スピード重視：15秒ごと）
-    const timer = setInterval(fetchData, 15000);
+    // 3. 定期更新（管理・司会ページは編集中の上書きを防ぐため間隔を広めに：60秒ごと）
+    const timer = setInterval(fetchData, 60000);
     return () => clearInterval(timer);
   }, []);
 
