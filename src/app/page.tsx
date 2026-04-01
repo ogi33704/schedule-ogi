@@ -57,6 +57,7 @@ export default function Home() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showApplyPanel, setShowApplyPanel] = useState(false);
+  const [showScheduleList, setShowScheduleList] = useState(false);
   const [printMonth, setPrintMonth] = useState(format(new Date(), "yyyy-MM"));
   const [selectedDetailDate, setSelectedDetailDate] = useState<Date | null>(null);
   const [savedName, setSavedName] = useState("");
@@ -94,6 +95,8 @@ export default function Home() {
       setAllReports(JSON.parse(localStorage.getItem("daily_reports") || "{}"));
       setApplicants(JSON.parse(localStorage.getItem("applicants") || "[]"));
       setCampaigns(JSON.parse(localStorage.getItem("campaigns") || "[]"));
+      const pName = localStorage.getItem("persistent_applicant_name");
+      if (pName) setSavedName(pName);
     } catch {}
 
     // 2. クラウドから初期取得
@@ -109,9 +112,20 @@ export default function Home() {
     return allSchedules[key] || [];
   };
 
-  const getReportForDate = (date: Date) => allReports[format(date, "yyyy-MM-dd")] || null;
+    const getReportForDate = (date: Date) => allReports[format(date, "yyyy-MM-dd")] || null;
 
-  const todaySchedules = getSchedulesForDate(new Date());
+  // 今週の予定を抽出
+  const getThisWeekSchedules = () => {
+    const start = startOfWeek(new Date(), { locale: ja, weekStartsOn: 1 });
+    const end = endOfWeek(new Date(), { locale: ja, weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start, end });
+    return days.map(date => ({
+      date,
+      schedules: getSchedulesForDate(date)
+    })).filter(item => item.schedules.length > 0);
+  };
+
+  const thisWeekSchedules = getThisWeekSchedules();
 
   // PW予定を全抽出（今日以降）
   const getAllFuturePWs = () => {
@@ -144,6 +158,7 @@ export default function Home() {
     
     // 名前を保存
     localStorage.setItem("persistent_applicant_name", name);
+    setSavedName(name);
 
     const newApp = {
       id: Math.random().toString(36).slice(2),
@@ -160,7 +175,8 @@ export default function Home() {
     pushToGAS({
       bulk_schedules: allSchedules,
       daily_reports: allReports,
-      applicants: updated
+      applicants: updated,
+      campaigns
     });
 
     alert(`${name}様、お申し込みありがとうございます。当日お待ちしております。`);
@@ -176,8 +192,92 @@ export default function Home() {
     pushToGAS({
       bulk_schedules: allSchedules,
       daily_reports: allReports,
-      applicants: updated
+      applicants: updated,
+      campaigns
     });
+    
+    alert(`${name} 様の申込を取り消ししました。`);
+  };
+
+  // PW情報カード（大きなボタン形式）
+  const PWInfoCard = ({ date, report, isToday }: { date: Date; report: DailyReport | null; isToday: boolean }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const title = isToday ? "本日のPW情報" : `次回のPW（${format(date, "M/d")}）情報`;
+    return (
+      <div className="action-btn-wrapper" style={{ marginBottom: '2rem' }}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="action-btn"
+          style={{ marginBottom: isOpen ? '2px' : '0' }}
+        >
+          {isOpen ? "閉じる" : `📢 ${title}`}
+        </button>
+        {isOpen && (
+          <div className="flex flex-col gap-3 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full mt-1">
+            {report && report.isPublished ? (
+              <>
+                <p className="text-body" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{report.message}</p>
+                {report.photoUrl && <img src={report.photoUrl} alt="PW" style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '12px' }} />}
+              </>
+            ) : (
+              <p className="text-small text-muted text-center py-4">司会者からの掲示はまだありません。</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 1. 各日の詳細をアコーディオンとして表示するための内部コンポーネント
+  const CollapsibleDay = ({ date, schedules, isToday = false }: { date: Date, schedules: ScheduleEntry[], isToday?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(isToday);
+    const holidayName = isJapaneseHoliday(date);
+    const isSun = getDay(date) === 0;
+    // サマリー行: 最初の予定の司会者と場所を代表表示
+    const mainSchedule = schedules[0];
+    const mainConductor = mainSchedule.isConductor2Lead ? mainSchedule.conductor2 : mainSchedule.conductor;
+
+    return (
+      <div className="w-full flex flex-col gap-2">
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex justify-between items-center w-full bg-white rounded-2xl border-2 border-slate-100 shadow-sm hover:shadow-md transition-all text-left"
+          style={{ borderLeft: isToday ? '6px solid #fdba74' : '2px solid #f1f5f9', padding: '0.75rem 1rem' }}
+        >
+          {/* 横1列: 日付 | 司会者 | 集合場所 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', flex: 1, alignItems: 'center' }}>
+            <span style={{ fontSize: '1rem', color: (isSun || holidayName) ? 'var(--danger)' : 'var(--text-main)', fontWeight: 'bold' }}>
+              {format(date, "M/d (E)", { locale: ja })}
+            </span>
+            <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>
+              {mainConductor}
+            </span>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 700, textAlign: 'right' }}>
+              {mainSchedule.location}{schedules.length > 1 ? ` 他` : ''}
+            </span>
+          </div>
+          <span className="text-xs font-bold px-2 py-1 whitespace-nowrap ml-1" style={{ flexShrink: 0, border: '1px solid #94a3b8', borderRadius: '4px', color: '#475569', transition: 'all 0.2s', backgroundColor: isOpen ? '#f1f5f9' : 'transparent' }}>
+            {isOpen ? '閉じる' : '詳細'}
+          </span>
+        </button>
+        {isOpen && (
+          <div className="flex flex-col gap-3 px-2 py-2 animate-fade-in">
+            {schedules.map((s, idx) => (
+              <div key={idx} className="flex flex-col gap-1 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <span style={{ color: '#fb923c', fontSize: '1.4rem', fontWeight: 900 }}>{s.time}</span>
+                  <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{s.location}</span>
+                </div>
+                <div style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>
+                  👤 {!s.isConductor2Lead ? <strong>{s.conductor} (責任者)</strong> : s.conductor}
+                  {s.conductor2 && <> / {s.isConductor2Lead ? <strong>{s.conductor2} (責任者)</strong> : s.conductor2}</>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // カレンダー計算
@@ -288,69 +388,49 @@ export default function Home() {
       <div className="no-print">
         <CampaignBanner campaigns={campaigns} />
       </div>
-      {/* 1. 本日の予定 */}
-      <section className="card flex flex-col gap-6 items-center text-center mt-6 shadow-md" style={{ borderColor: 'var(--primary)', padding: '2rem 1rem' }}>
+      {/* 1. 今週の奉仕予定 */}
+      <section className="card flex flex-col gap-6 items-center text-center mt-6 shadow-md" style={{ borderColor: 'var(--primary)', padding: '2rem 1rem', marginBottom: '2rem' }}>
         <p className="font-bold" style={{ color: 'var(--text-muted)', fontSize: '1.2rem', letterSpacing: '0.05em' }}>
           <span style={{ fontWeight: 900 }}>{format(new Date(), "yyyy年 M月d日 (eeee)", { locale: ja })}</span><br />
-          <span style={{ fontSize: '1.5rem', color: 'var(--text-main)', fontWeight: 900 }}>本日の奉仕予定</span>
+          <span style={{ fontSize: '1.8rem', color: 'var(--text-main)', fontWeight: 900 }}>今週の奉仕予定</span>
         </p>
 
-        <div className="flex flex-col gap-5 w-full">
-          {todaySchedules.length === 0 ? (
-            <div className="py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-               <p className="text-muted" style={{ fontSize: '1.4rem', fontWeight: 900 }}>本日の予定はありません。</p>
+        <div className="flex flex-col gap-4 w-full">
+          {thisWeekSchedules.length === 0 ? (
+            <div className="py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 w-full">
+               <p className="text-muted" style={{ fontSize: '1.4rem', fontWeight: 900 }}>今週の予定はありません。</p>
             </div>
           ) : (
-            todaySchedules.map((s, idx) => (
-              <div key={idx} className="flex flex-col gap-2 items-center bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm">
-                <h1 className="text-h1" style={{ color: 'var(--primary)', fontSize: '2.8rem', lineHeight: 1 }}>{s.time}</h1>
-                <p className="text-h2" style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>{s.location}</p>
-                <div style={{ fontSize: '1.25rem', marginTop: '0.5rem' }}>
-                  👤 {!s.isConductor2Lead ? <strong>{s.conductor} (責任者)</strong> : s.conductor}
-                  {s.conductor2 && <> / {s.isConductor2Lead ? <strong>{s.conductor2} (責任者)</strong> : s.conductor2}</>}
-                </div>
-              </div>
+            thisWeekSchedules.map((item, idx) => (
+              <CollapsibleDay key={idx} date={item.date} schedules={item.schedules} isToday={isSameDay(item.date, new Date())} />
             ))
           )}
         </div>
       </section>
 
-      {/* 2. PW情報カード */}
+      {/* 2. PW情報カード（折りたたみ式） */}
       {topNextPW && (
-        <section className="card flex flex-col gap-4 animate-fade-in" style={{ border: '2px solid #7c3aed', backgroundColor: '#fdfaff' }}>
-           <h2 className="text-h2" style={{ color: '#7c3aed', fontSize: '1.1rem', borderBottom: '2px solid #ddd6fe', paddingBottom: '6px' }}>
-             📢 {isSameDay(topNextPW.date, new Date()) ? "本日のPW情報" : `次回のPW（${format(topNextPW.date, "M/d")}) 情報`}
-           </h2>
-           {getReportForDate(topNextPW.date) && getReportForDate(topNextPW.date)?.isPublished ? (
-             <div className="flex flex-col gap-3">
-               <p className="text-body" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{getReportForDate(topNextPW.date)?.message}</p>
-               {getReportForDate(topNextPW.date)?.photoUrl && <img src={getReportForDate(topNextPW.date)?.photoUrl || ""} alt="PW" style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', borderRadius: '12px' }} />}
-             </div>
-           ) : <p className="text-small text-muted text-center py-4">司会者からの掲示はまだありません。</p>}
-        </section>
+        <PWInfoCard
+          date={topNextPW.date}
+          report={getReportForDate(topNextPW.date)}
+          isToday={isSameDay(topNextPW.date, new Date())}
+        />
       )}
 
       {/* 3. PW申込ボタン（枠外） */}
-      <section className="px-4 flex flex-col items-center w-full mb-8">
+      <div className="action-btn-wrapper" style={{ marginBottom: '2rem' }}>
         <button 
           onClick={() => setShowApplyPanel(!showApplyPanel)} 
-          className="btn btn-primary w-full shadow-lg" 
-          style={{ 
-            padding: '1.5rem', 
-            backgroundColor: '#7c3aed', 
-            fontSize: '1.4rem', 
-            borderRadius: '20px',
-            maxWidth: '500px',
-            marginBottom: showApplyPanel ? '2px' : '0'
-          }}
+          className="action-btn"
+          style={{ marginBottom: showApplyPanel ? '2px' : '0' }}
         >
-          {showApplyPanel ? "申込画面を閉じる" : "✏️ PWの参加を申し込む"}
+          {showApplyPanel ? "申込画面を閉じる" : "✏️ PW申込み"}
         </button>
 
         {showApplyPanel && (
-          <div className="flex flex-col gap-8 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#7c3aed] shadow-2xl w-full" style={{ maxWidth: '600px' }}>
+          <div className="flex flex-col gap-8 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full" style={{ maxWidth: '600px' }}>
              <div className="flex flex-col gap-3 pb-4 border-b-2 border-slate-100 text-center">
-               <h3 className="font-bold text-h2" style={{ fontSize: '1.4rem', color: '#7c3aed' }}>参加のお申し込み</h3>
+               <h3 className="font-bold text-h2" style={{ fontSize: '1.4rem', color: '#f97316' }}>参加のお申し込み</h3>
                <div className="flex flex-col gap-2 mt-2">
                  <label className="text-small font-bold text-left" style={{ color: 'var(--text-muted)' }}>お名前をご記入ください：</label>
                  <input 
@@ -365,7 +445,7 @@ export default function Home() {
              <div className="flex flex-col gap-10">
                {nextPWs.map(({ date, slots }) => (
                  <div key={format(date, "yyyy-MM-dd")} className="flex flex-col gap-4">
-                   <div style={{ padding: '8px 24px', backgroundColor: '#7c3aed', borderRadius: '999px', alignSelf: 'center', color: 'white', boxShadow: '0 4px 10px rgba(124,58,237,0.3)' }}>
+                   <div style={{ padding: '8px 24px', backgroundColor: '#fb923c', borderRadius: '999px', alignSelf: 'center', color: 'white', boxShadow: '0 4px 10px rgba(251,146,60,0.3)' }}>
                      <span className="font-bold" style={{ fontSize: '1.25rem' }}>{format(date, "M/d (E)", { locale: ja })}</span>
                    </div>
                    
@@ -373,38 +453,35 @@ export default function Home() {
                      {slots.map(slot => {
                        const slotApps = applicants.filter(a => a.date === format(date, "yyyy-MM-dd") && a.slotId === slot.id);
                        return (
-                         <div key={slot.id} className="card p-6 flex flex-col gap-6 shadow-sm" style={{ backgroundColor: '#fff', border: '1px solid #ddd6fe', borderRadius: '24px' }}>
-                           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                         <div key={slot.id} className="card p-6 flex flex-col gap-6 shadow-sm" style={{ backgroundColor: '#fff', border: '1px solid #fed7aa', borderRadius: '24px' }}>
+                           <div className="flex justify-between items-center border-b border-slate-100 pb-3 flex-wrap gap-3">
                              <div className="flex flex-col">
-                               <span className="font-bold" style={{ fontSize: '1.6rem', color: '#7c3aed', lineHeight: 1 }}>{getAutoTimeRange(slot.time)}</span>
-                               <span style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>責任者: {slot.isConductor2Lead ? slot.conductor2 : slot.conductor}</span>
-                             </div>
-                             <button 
-                               onClick={() => handleApply(slot, date)} 
-                               className="btn btn-primary" 
-                               style={{ backgroundColor: '#7c3aed', padding: '1rem 1.5rem', fontSize: '1.2rem', borderRadius: '12px' }}
-                             >この枠で申し込む</button>
-                           </div>
+                                <span className="font-bold" style={{ fontSize: '1.6rem', color: '#f97316', lineHeight: 1 }}>{getAutoTimeRange(slot.time)}</span>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>責任者: {slot.isConductor2Lead ? slot.conductor2 : slot.conductor}</span>
+                              </div>
+                              {slotApps.some(a => savedName !== '' && a.name === savedName) ? null : (
+                                <button 
+                                  onClick={() => handleApply(slot, date)} 
+                                  className="btn btn-primary animate-fade-in" 
+                                  style={{ backgroundColor: '#fb923c', padding: '0.8rem 1.25rem', fontSize: '1.1rem', borderRadius: '12px' }}
+                                >この枠で申し込む</button>
+                              )}
+                            </div>
 
-                           {slotApps.length > 0 && (
-                             <div className="flex flex-col gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                               <p className="font-bold" style={{ fontSize: '1rem', color: '#475569' }}>参加される皆様 ({slotApps.length}名)：</p>
-                               <div className="flex flex-col gap-3">
-                                 {slotApps.map(a => (
-                                   <div key={a.id} className="flex justify-between items-center bg-white py-3 px-5 rounded-xl border border-slate-200 shadow-sm animate-fade-in">
-                                     <span style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{a.name} 様</span>
-                                     <button 
-                                       onClick={() => removeApplicant(a.id, a.name)} 
-                                       style={{ 
-                                         padding: '6px 12px', fontSize: '0.85rem', color: '#ef4444', border: '1.5px solid #ffcfcf', 
-                                         borderRadius: '8px', backgroundColor: '#fff5f5', fontWeight: 'bold' 
-                                       }}
-                                     >取消す</button>
-                                   </div>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
+                            {(() => {
+                              const myApps = slotApps.filter(a => savedName !== '' && a.name === savedName);
+                              if (myApps.length > 0) {
+                                return (
+                                  <div className="flex flex-col gap-3 bg-rose-50 p-4 rounded-xl border border-rose-100 mt-2 animate-fade-in w-full">
+                                    <div className="flex flex-col gap-1 w-full text-center">
+                                      <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e11d48' }}>✅ あなたはこの枠に申込済みです</span>
+                                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#e11d48' }}>キャンセルの場合は司会者に連絡してください。</span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                          </div>
                        );
                      })}
@@ -414,7 +491,7 @@ export default function Home() {
              </div>
           </div>
         )}
-      </section>
+      </div>
 
       {/* 4. カレンダー詳細 (カレンダークリック時にここに表示) */}
       {selectedDetailDate && (
@@ -456,128 +533,77 @@ export default function Home() {
         </section>
       )}
 
-      {/* 5. カレンダー */}
-      <section className="flex flex-col gap-4 mt-6">
-        <div className="flex justify-between items-center px-4">
-          <h2 className="text-h2" style={{ fontSize: '1.2rem' }}>奉仕予定カレンダー</h2>
-          <div className="flex bg-slate-100 p-1 rounded-full">
-            {VIEW_TABS.map(tab => (
-              <button key={tab} className={`btn ${viewTab === tab ? 'btn-primary' : ''}`} style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={() => setViewTab(tab)}>{tab}</button>
-            ))}
-          </div>
-        </div>
+      {/* 5. 奉仕予定一覧（ボタン式） */}
+      <div className="action-btn-wrapper">
+        <button
+          onClick={() => setShowScheduleList(!showScheduleList)}
+          className="action-btn"
+          style={{ marginBottom: showScheduleList ? '2px' : '0' }}
+        >
+          {showScheduleList ? "奉仕予定一覧を閉じる" : "📋 奉仕予定一覧"}
+        </button>
 
-        {viewTab === "月間" ? (
-          <div className="px-4">
-            <div className="card p-4">
-              <div className="flex justify-between items-center mb-6 px-4">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="btn p-3" style={{ fontSize: '1.2rem' }}>◀</button>
-                <span className="font-bold" style={{ fontSize: '1.3rem' }}>{format(currentMonth, "yyyy年 M月", { locale: ja })}</span>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="btn p-3" style={{ fontSize: '1.2rem' }}>▶</button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: 'var(--border)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                {["日", "月", "火", "水", "木", "金", "土"].map(d => <div key={d} style={{ backgroundColor: '#f8fafc', textAlign: 'center', padding: '12px 0', fontSize: '0.8rem', fontWeight: 'bold' }}>{d}</div>)}
-                {calendarDays.map((day, idx) => {
-                  const daySchedules = getSchedulesForDate(day);
-                  const isCurMonth = isSameMonth(day, monthStart);
-                  const isToday = isSameDay(day, new Date());
-                  const holidayName = isJapaneseHoliday(day);
-                  const isSun = getDay(day) === 0;
 
+        {showScheduleList && (
+          <div className="flex flex-col gap-4 animate-fade-in bg-white p-4 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full" style={{ maxWidth: '600px' }}>
+            <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center mb-2">
+                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="btn p-3 bg-slate-100 hover:bg-slate-200" style={{ fontSize: '1.2rem' }}>◀</button>
+                  <span className="font-bold" style={{ fontSize: '1.5rem' }}>{format(currentMonth, "yyyy年 M月", { locale: ja })}</span>
+                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="btn p-3 bg-slate-100 hover:bg-slate-200" style={{ fontSize: '1.2rem' }}>▶</button>
+                </div>
+                {(() => {
+                  const monthDays = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
+                  const rows: { date: Date; schedule: ScheduleEntry }[] = [];
+                  monthDays.forEach(date => {
+                    getSchedulesForDate(date).forEach(s => rows.push({ date, schedule: s }));
+                  });
+                  if (rows.length === 0) {
+                    return <p className="text-center text-muted py-12 bg-white rounded-3xl border-2 border-dashed border-slate-200">この月の予定はまだ登録されていません。</p>;
+                  }
                   return (
-                    <div 
-                      key={idx} 
-                      onClick={() => daySchedules.length > 0 && setSelectedDetailDate(day)}
-                      style={{ 
-                        backgroundColor: isToday ? '#fffbeb' : 'white', 
-                        minHeight: '75px', 
-                        opacity: isCurMonth ? 1 : 0.3, 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        padding: '6px 2px',
-                        cursor: daySchedules.length > 0 ? 'pointer' : 'default',
-                        position: 'relative',
-                        border: isToday ? '1px solid #fde68a' : '1px solid #f1f5f9'
-                      }}
-                    >
-                      <span style={{ 
-                        fontSize: '0.9rem', 
-                        fontWeight: isToday ? 'bold' : 'normal', 
-                        color: (isSun || holidayName) ? 'var(--danger)' : 'inherit' 
-                      }} title={holidayName || ""}>{format(day, "d")}</span>
-                      <div className="flex flex-wrap justify-center gap-1 mt-2">
-                        {daySchedules.map((s, i) => <div key={i} style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: s.location === "PW＆周辺奉仕" ? '#7c3aed' : 'var(--primary)' }} />)}
-                      </div>
-                      {daySchedules.length > 0 && (
-                        <div style={{ position: 'absolute', bottom: '2px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>詳細</div>
-                      )}
+                    <div style={{ overflowX: 'auto', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#fb923c', color: 'white' }}>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap' }}>日付</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap' }}>時間</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap' }}>集合場所</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap' }}>司会者</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(({ date, schedule: s }, i) => {
+                            const isToday = isSameDay(date, new Date());
+                            const isSun = getDay(date) === 0;
+                            const holidayName = isJapaneseHoliday(date);
+                            const conductor = s.isConductor2Lead ? s.conductor2 : s.conductor;
+                            return (
+                              <tr key={i} style={{
+                                backgroundColor: isToday ? '#fffbeb' : i % 2 === 0 ? '#ffffff' : '#f8fafc',
+                                borderBottom: '1px solid #e2e8f0'
+                              }}>
+                                <td style={{ padding: '10px 12px', fontWeight: 'bold', color: (isSun || holidayName) ? 'var(--danger)' : 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                                  {format(date, "M/d (E)", { locale: ja })}
+                                  {holidayName && <span style={{ fontSize: '0.7rem', display: 'block', color: 'var(--danger)' }}>{holidayName}</span>}
+                                </td>
+                                <td style={{ padding: '10px 12px', color: 'var(--primary)', fontWeight: 700, whiteSpace: 'nowrap' }}>{s.time}</td>
+                                <td style={{ padding: '10px 12px', fontWeight: 600 }}>{s.location}</td>
+                                <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{conductor}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   );
-                })}
+                })()}
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 px-4">
-            {(() => {
-              const weekDays = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
-              const hasAny = weekDays.some(d => getSchedulesForDate(d).length > 0);
-              
-              if (!hasAny) {
-                return <p className="text-center text-muted py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">今後2週間の予定は登録されていません。</p>;
-              }
-
-              return weekDays.map((date, i) => {
-                const daySchedules = getSchedulesForDate(date);
-                if (daySchedules.length === 0) return null;
-                return (
-                  <div key={i} className="card p-6 flex justify-between items-center shadow-sm" style={{ borderLeft: '6px solid var(--primary)' }}>
-                     <div>
-                       <p className="text-small text-muted font-bold" style={{ fontSize: '1rem' }}>{format(date, "M/d (E)", { locale: ja })}</p>
-                       <p className="font-bold" style={{ fontSize: '1.25rem' }}>{daySchedules.map(s => s.location).join(', ')}</p>
-                     </div>
-                  </div>
-                );
-              });
-            })()}
           </div>
         )}
-      </section>
+      </div>
 
-      <footer className="mt-12 flex flex-col items-center gap-6 px-4">
-        {/* PDF書き出しセクション */}
-        <div className="card w-full max-w-sm flex flex-col gap-4 items-center bg-gray-50 border-gray-200 shadow-sm no-print">
-          <p className="font-bold" style={{ fontSize: '1.2rem', color: '#334155' }}>📄 月別の奉仕予定表PDF</p>
-          <div className="w-full">
-            <label className="text-small font-bold" style={{ display: 'block', marginBottom: '4px' }}>書き出す月を選択</label>
-            <select 
-              className="card" 
-              style={{ width: '100%', padding: '0.75rem', fontSize: '1.1rem' }}
-              value={printMonth}
-              onChange={(e) => setPrintMonth(e.target.value)}
-            >
-              {(() => {
-                const options = [];
-                const base = new Date();
-                for (let i = -1; i <= 6; i++) {
-                  const d = addMonths(base, i);
-                  const val = format(d, "yyyy-MM");
-                  options.push(<option key={val} value={val}>{format(d, "yyyy年 M月")}</option>);
-                }
-                return options;
-              })()}
-            </select>
-          </div>
-          <button 
-            onClick={handlePrint}
-            className="btn btn-primary w-full text-center shadow-md bg-slate-700 border-slate-700 text-white"
-            style={{ padding: '1.25rem', borderRadius: '16px', fontSize: '1.1rem' }}
-          >
-            PDFに書き出す / 印刷
-          </button>
-        </div>
-
+      <footer className="mt-8 flex flex-col items-center gap-6 px-4">
         <div className="flex flex-col gap-2 items-center no-print">
           <Link href="/conductor" className="text-muted" style={{ fontSize: '0.9rem' }}>PW司会者用ログイン</Link>
           <Link href="/admin" className="text-muted" style={{ fontSize: '0.85rem' }}>管理者ログイン</Link>

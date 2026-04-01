@@ -168,3 +168,64 @@ body {
   color: var(--danger);
   font-weight: bold;
 }
+
+/* Action button containers - consistent width for all three main buttons */
+.action-btn-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 1rem;
+}
+
+.action-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  padding: 1.5rem;
+  background-color: #fdba74;
+  color: #111827;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition);
+}
+
+.action-btn:hover {
+  background-color: #fb923c;
+  transform: translateY(-2px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .action-btn-wrapper {
+    padding: 0 0.75rem;
+  }
+
+  .action-btn {
+    font-size: 1.2rem;
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .action-btn {
+    font-size: 1.1rem;
+    padding: 1rem;
+    border-radius: 14px;
+  }
+}
