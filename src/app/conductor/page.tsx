@@ -299,46 +299,33 @@ export default function ConductorPage() {
         <Link href="/" className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>戻る</Link>
       </header>
       {/* ... (Rest of UI remains same) */}
-      <section className="card flex flex-col gap-6 border-primary shadow-lg">
-        {/* 今後の申込状況一覧サマリー */}
-        <div className="p-5 bg-white border-2 border-primary rounded-2xl shadow-lg no-print">
-          <h2 className="font-black flex items-center gap-2 mb-4" style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>
-            📅 今後の申込状況 (一覧)
-          </h2>
-          <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {(() => {
-              const futureApps = applicants
-                .filter(a => a.date >= format(new Date(), "yyyy-MM-dd"))
-                .sort((a, b) => a.date.localeCompare(b.date));
-               
-              if (futureApps.length === 0) return <p className="text-center py-8 text-muted bg-slate-50 rounded-xl">現在、今後の申込はありません。</p>;
-               
+      {/* 全申込状況のサマリー（上に移動したもの） */}
+      <section className="card flex flex-col gap-4 border-slate-200 shadow-lg">
+        <h2 className="text-h2 font-black" style={{ color: 'var(--primary)', fontSize: '1.25rem', marginBottom: '4px' }}>📝 申込状況</h2>
+        {applicants.length > 0 ? (
+          <div className="flex flex-col gap-6">
+            {Array.from(new Set(applicants.map(a => a.date))).sort().map(date => {
+              const dateApps = applicants.filter(a => a.date === date);
               return (
-                <div className="flex flex-col gap-2">
-                  {futureApps.map((a, i) => (
-                    <div key={i} className="flex justify-between items-center bg-slate-50 p-3 px-4 rounded-xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-small" style={{ color: '#444' }}>
-                          {format(new Date(a.date), "M月d日 (E)", { locale: ja })}
-                        </span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>{a.timeRange}</span>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="font-black" style={{ fontSize: '1.1rem' }}>{a.name} <span style={{ fontSize: '0.8rem', fontWeight: 'normal' }}>様</span></span>
-                        <button onClick={() => {
-                          setTargetDate(a.date);
-                          // 日付選択へジャンプ
-                          window.scrollTo({ top: document.querySelector('input[type="date"]')?.getBoundingClientRect().top! + window.pageYOffset - 100, behavior: 'smooth' });
-                        }} className="text-small underline text-muted" style={{ padding: '2px 0' }}>詳細を確認</button>
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-center text-small font-black mt-4 py-3 bg-primary/10 rounded-xl" style={{ color: 'var(--primary)' }}>現在の合計: {futureApps.length} 名</p>
+                <div key={date} className="flex flex-col gap-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="font-bold text-small" style={{ borderBottom: '2px solid var(--primary)', paddingBottom: '6px', color: '#444' }}>
+                    {format(parseISO(date), "M月d日 (eeee)", { locale: ja })}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {dateApps.map(a => (
+                      <span key={a.id} className="bg-white px-4 py-2 rounded-full text-small font-bold shadow-sm border border-slate-100">
+                        {a.name} <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'normal' }}>({a.timeRange})</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
-            })()}
+            })}
           </div>
-        </div>
+        ) : <p className="text-small text-muted py-6 text-center bg-slate-50 rounded-xl">現在、今後の申込はありません。</p>}
+      </section>
+
+      <section className="card flex flex-col gap-6 border-primary shadow-lg">
 
         <div>
           <h2 className="text-h2 text-small" style={{ color: 'var(--primary)', marginBottom: '4px' }}>📅 日付を選択 (個別詳細・メッセージ等)</h2>
@@ -401,31 +388,6 @@ export default function ConductorPage() {
         </div>
       </section>
 
-      {/* 全申込状況のサマリー */}
-      <section className="card flex flex-col gap-4 border-slate-200">
-        <h2 className="text-h2 text-small" style={{ color: 'var(--primary)', marginBottom: '4px' }}>📝 今後の申込状況（一覧）</h2>
-        {applicants.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            {Array.from(new Set(applicants.map(a => a.date))).sort().map(date => {
-              const dateApps = applicants.filter(a => a.date === date);
-              return (
-                <div key={date} className="flex flex-col gap-2">
-                  <p className="font-bold text-small" style={{ borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
-                    {format(parseISO(date), "M月d日 (eeee)", { locale: ja })}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {dateApps.map(a => (
-                      <span key={a.id} className="bg-slate-100 px-3 py-1 rounded-full text-small font-bold">
-                        {a.name}様 <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 'normal' }}>({a.timeRange})</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : <p className="text-small text-muted py-4 text-center">現在、今後の申込はありません。</p>}
-      </section>
     </div>
   );
 }
