@@ -141,7 +141,7 @@ export default function ConductorPage() {
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files && e.target.files.length > 0 ? e.target.files[0] : undefined;
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -158,10 +158,10 @@ export default function ConductorPage() {
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, width, height);
+          if (ctx) ctx.drawImage(img, 0, 0, width, height);
           setPhotoPreview(canvas.toDataURL("image/jpeg", 0.7));
         };
-        img.src = event.target?.result as string;
+        img.src = (event.target && event.target.result) as string;
       };
       reader.readAsDataURL(file);
     }
@@ -171,7 +171,7 @@ export default function ConductorPage() {
     const updatedReports = {
       ...reports,
       [targetDate]: {
-        id: reports[targetDate]?.id || Math.random().toString(36).slice(2),
+        id: (reports[targetDate] && reports[targetDate].id) || Math.random().toString(36).slice(2),
         date: targetDate,
         message,
         photoUrl: photoPreview,
@@ -362,8 +362,8 @@ export default function ConductorPage() {
         </div>
         <div className="flex flex-col gap-2 mt-2 no-print">
             <div className="flex justify-between items-center px-1">
-              <span style={{ fontSize: '0.85rem', color: reports[targetDate]?.isPublished ? '#16a34a' : '#64748b', fontWeight: 'bold' }}>
-                ステータス: {reports[targetDate]?.isPublished ? "✅ TOP掲示中" : "⚪️ 下書き(非表示)"}
+              <span style={{ fontSize: '0.85rem', color: (reports[targetDate] && reports[targetDate].isPublished) ? '#16a34a' : '#64748b', fontWeight: 'bold' }}>
+                ステータス: {(reports[targetDate] && reports[targetDate].isPublished) ? "✅ TOP掲示中" : "⚪️ 下書き(非表示)"}
               </span>
             </div>
             <div className="flex gap-3">
@@ -378,7 +378,7 @@ export default function ConductorPage() {
                 TOPページに掲示する
               </button>
             </div>
-            {reports[targetDate]?.isPublished && (
+            {(reports[targetDate] && reports[targetDate].isPublished) && (
               <button 
                 onClick={() => handleSave(false)} 
                 className="text-small text-muted mt-2" style={{ textDecoration: 'underline' }}>

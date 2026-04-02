@@ -183,21 +183,23 @@ body {
   display: flex !important;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   width: 100% !important;
-  padding: 1.5rem;
-  background-color: #fdba74;
+  padding: 1rem 1.5rem;
+  background-color: transparent;
   color: #111827;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  border-radius: 20px;
-  border: none;
+  border-radius: 9999px;
+  border: 2px solid #fb923c;
   cursor: pointer;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
   transition: var(--transition);
 }
 
 .action-btn:hover {
-  background-color: #fb923c;
+  background-color: #fff7ed;
+  border-color: #f97316;
   transform: translateY(-2px);
 }
 

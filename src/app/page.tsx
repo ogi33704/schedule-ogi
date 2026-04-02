@@ -208,12 +208,14 @@ export default function Home() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="action-btn"
-          style={{ marginBottom: isOpen ? '2px' : '0' }}
         >
-          {isOpen ? "閉じる" : `📢 ${title}`}
+          <span>{`📢 ${title}`}</span>
+          <svg className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6" style={{ width: '1rem', height: '1rem' }}>
+             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5 5 1 1 5"/>
+          </svg>
         </button>
         {isOpen && (
-          <div className="flex flex-col gap-3 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full mt-1">
+          <div className="flex flex-col gap-3 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full mt-4">
             {report && report.isPublished ? (
               <>
                 <p className="text-body" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{report.message}</p>
@@ -241,8 +243,13 @@ export default function Home() {
       <div className="w-full flex flex-col gap-2">
         <button 
           onClick={() => setIsOpen(!isOpen)}
-          className="flex justify-between items-center w-full bg-white rounded-2xl border-2 border-slate-100 shadow-sm hover:shadow-md transition-all text-left"
-          style={{ borderLeft: isToday ? '6px solid #fdba74' : '2px solid #f1f5f9', padding: '0.75rem 1rem' }}
+          className="flex justify-between items-center w-full shadow-sm hover:shadow-md transition-all text-left"
+          style={{ 
+            background: 'transparent',
+            border: isToday ? '3px solid #f97316' : '2px solid #e2e8f0', 
+            borderRadius: '9999px',
+            padding: '0.75rem 1.25rem' 
+          }}
         >
           {/* 横1列: 日付 | 司会者 | 集合場所 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', flex: 1, alignItems: 'center' }}>
@@ -252,13 +259,13 @@ export default function Home() {
             <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>
               {mainConductor}
             </span>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 700, textAlign: 'right' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', paddingRight: '0.5rem' }}>
               {mainSchedule.location}{schedules.length > 1 ? ` 他` : ''}
             </span>
           </div>
-          <span className="text-xs font-bold px-2 py-1 whitespace-nowrap ml-1" style={{ flexShrink: 0, border: '1px solid #94a3b8', borderRadius: '4px', color: '#475569', transition: 'all 0.2s', backgroundColor: isOpen ? '#f1f5f9' : 'transparent' }}>
-            {isOpen ? '閉じる' : '詳細'}
-          </span>
+          <svg className={`w-4 h-4 ml-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6" style={{ width: '1rem', height: '1rem', flexShrink: 0, color: '#64748b' }}>
+             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5 5 1 1 5"/>
+          </svg>
         </button>
         {isOpen && (
           <div className="flex flex-col gap-3 px-2 py-2 animate-fade-in">
@@ -422,13 +429,15 @@ export default function Home() {
         <button 
           onClick={() => setShowApplyPanel(!showApplyPanel)} 
           className="action-btn"
-          style={{ marginBottom: showApplyPanel ? '2px' : '0' }}
         >
-          {showApplyPanel ? "申込画面を閉じる" : "✏️ PW申込み"}
+          <span>✏️ PW申込み</span>
+          <svg className={`w-4 h-4 transition-transform duration-200 ${showApplyPanel ? 'rotate-180' : ''}`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6" style={{ width: '1rem', height: '1rem' }}>
+             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5 5 1 1 5"/>
+          </svg>
         </button>
 
         {showApplyPanel && (
-          <div className="flex flex-col gap-8 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full" style={{ maxWidth: '600px' }}>
+          <div className="flex flex-col gap-8 animate-fade-in bg-white p-6 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full mt-4" style={{ maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
              <div className="flex flex-col gap-3 pb-4 border-b-2 border-slate-100 text-center">
                <h3 className="font-bold text-h2" style={{ fontSize: '1.4rem', color: '#f97316' }}>参加のお申し込み</h3>
                <div className="flex flex-col gap-2 mt-2">
@@ -538,14 +547,15 @@ export default function Home() {
         <button
           onClick={() => setShowScheduleList(!showScheduleList)}
           className="action-btn"
-          style={{ marginBottom: showScheduleList ? '2px' : '0' }}
         >
-          {showScheduleList ? "奉仕予定一覧を閉じる" : "📋 奉仕予定一覧"}
+          <span>📋 奉仕予定一覧</span>
+          <svg className={`w-4 h-4 transition-transform duration-200 ${showScheduleList ? 'rotate-180' : ''}`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6" style={{ width: '1rem', height: '1rem' }}>
+             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5 5 1 1 5"/>
+          </svg>
         </button>
 
-
         {showScheduleList && (
-          <div className="flex flex-col gap-4 animate-fade-in bg-white p-4 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full" style={{ maxWidth: '600px' }}>
+          <div className="flex flex-col gap-4 animate-fade-in bg-white p-4 rounded-3xl border-4 border-[#fdba74] shadow-2xl w-full mt-4" style={{ maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center mb-2">
                   <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="btn p-3 bg-slate-100 hover:bg-slate-200" style={{ fontSize: '1.2rem' }}>◀</button>

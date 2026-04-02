@@ -418,7 +418,7 @@ export default function AdminPage() {
 
   // --- マスター操作 ---
   const addConductorToSlot = (slot: string, name: string) => {
-    if (!name || master[slot]?.includes(name)) return;
+    if (!name || (master[slot] && master[slot].includes(name))) return;
     setMaster(prev => ({ ...prev, [slot]: [...(prev[slot] || []), name] }));
   };
 

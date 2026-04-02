@@ -18,7 +18,7 @@ export default function CampaignBanner({ campaigns = [] }: { campaigns?: Campaig
   if (activeCampaigns.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '2rem' }}>
       {activeCampaigns.map(c => (
         <div key={c.id} style={{
           display: 'flex',
